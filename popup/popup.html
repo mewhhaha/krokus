@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Friction Switch</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="panel">
+      <header class="hero">
+        <h1>Friction Switch</h1>
+      </header>
+
+      <section class="group">
+        <h2>YouTube</h2>
+
+        <label class="row" for="blockYoutubeShorts">
+          <span class="copy">
+            <span class="title">Block Shorts pages</span>
+            <span class="hint">Open video page instead.</span>
+          </span>
+          <span class="switch">
+            <input id="blockYoutubeShorts" type="checkbox">
+            <span class="switch-ui" aria-hidden="true"></span>
+          </span>
+        </label>
+
+        <label class="row" for="hideYoutubeShortsUi">
+          <span class="copy">
+            <span class="title">Hide Shorts UI</span>
+            <span class="hint">Cut shelves, links, feed tiles.</span>
+          </span>
+          <span class="switch">
+            <input id="hideYoutubeShortsUi" type="checkbox">
+            <span class="switch-ui" aria-hidden="true"></span>
+          </span>
+        </label>
+      </section>
+
+      <section class="group">
+        <h2>Reddit</h2>
+
+        <label class="row" for="laggyReddit">
+          <span class="copy">
+            <span class="title">Lag mode</span>
+            <span class="hint">Adds heavy jank, hides feed images, slows comments.</span>
+          </span>
+          <span class="switch">
+            <input id="laggyReddit" type="checkbox">
+            <span class="switch-ui" aria-hidden="true"></span>
+          </span>
+        </label>
+      </section>
+    </main>
+
+    <script src="../content/common.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
