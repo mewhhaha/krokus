@@ -4,6 +4,8 @@
   const HEAVY_LAG_PROFILE = [320, 160];
   const BOOT_ATTR = "data-friction-switch-booting";
   const REDDIT_VIEW_ATTR = "data-friction-switch-reddit-view";
+  const LAGGY_CLASS = "friction-switch-laggy";
+  const MONO_CLASS = "friction-switch-reddit-monochrome";
   const FEED_POST_SELECTOR = [
     "shreddit-ad-post",
     "shreddit-post",
@@ -52,6 +54,10 @@
     return Math.round(base * multiplier + Math.random() * jitter);
   }
 
+  function hasActiveRedditEffects() {
+    return Boolean(options.laggyReddit || options.monochromeReddit);
+  }
+
   function maybeLag(multiplier = 1) {
     if (!options.laggyReddit) {
       return;
@@ -68,7 +74,8 @@
 
   function removeStyle() {
     document.getElementById(STYLE_ID)?.remove();
-    document.documentElement?.classList.remove("friction-switch-laggy");
+    document.documentElement?.classList.remove(LAGGY_CLASS);
+    document.documentElement?.classList.remove(MONO_CLASS);
     document.documentElement?.removeAttribute(BOOT_ATTR);
     document.documentElement?.removeAttribute(REDDIT_VIEW_ATTR);
   }
@@ -165,13 +172,14 @@
   }
 
   function ensureStyle() {
-    if (!options.laggyReddit || !document.documentElement) {
+    if (!hasActiveRedditEffects() || !document.documentElement) {
       removeStyle();
       restoreFeedAds();
       return;
     }
 
-    document.documentElement.classList.add("friction-switch-laggy");
+    document.documentElement.classList.toggle(LAGGY_CLASS, Boolean(options.laggyReddit));
+    document.documentElement.classList.toggle(MONO_CLASS, Boolean(options.monochromeReddit));
 
     if (document.getElementById(STYLE_ID)) {
       return;
@@ -180,74 +188,86 @@
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
-      html.friction-switch-laggy[${BOOT_ATTR}="true"] *,
-      html.friction-switch-laggy[${BOOT_ATTR}="true"] *::before,
-      html.friction-switch-laggy[${BOOT_ATTR}="true"] *::after {
+      html.${LAGGY_CLASS}[${BOOT_ATTR}="true"] *,
+      html.${LAGGY_CLASS}[${BOOT_ATTR}="true"] *::before,
+      html.${LAGGY_CLASS}[${BOOT_ATTR}="true"] *::after {
         transition: none !important;
         animation: none !important;
       }
 
-      html.friction-switch-laggy body {
+      html.${LAGGY_CLASS}:not(.${MONO_CLASS}) body {
         filter: saturate(0.94) contrast(0.98);
       }
 
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="post-media-container"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="thumbnail"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="expando-media-container"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [data-post-click-location="post-media"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [data-click-id="media"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="post-media-container"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="thumbnail"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="expando-media-container"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [data-post-click-location="post-media"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [data-click-id="media"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-click-id="image"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-click-id="media"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-testid="post-image"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [slot="post-media-container"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [slot="thumbnail"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-testid="post-thumbnail"] {
+      html.${MONO_CLASS} body {
+        filter: grayscale(1) contrast(1.02);
+      }
+
+      html.${LAGGY_CLASS}.${MONO_CLASS} body {
+        filter: grayscale(1) contrast(1.02);
+      }
+
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="post-media-container"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="thumbnail"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="expando-media-container"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [data-post-click-location="post-media"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [data-click-id="media"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="post-media-container"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="thumbnail"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="expando-media-container"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [data-post-click-location="post-media"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [data-click-id="media"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-click-id="image"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-click-id="media"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-testid="post-image"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [slot="post-media-container"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [slot="thumbnail"],
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-testid="post-thumbnail"] {
         background: #000 !important;
         border-color: #111 !important;
         color: transparent !important;
       }
 
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="post-media-container"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="thumbnail"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="expando-media-container"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [data-post-click-location="post-media"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [data-click-id="media"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [data-testid="post-thumbnail"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="post-media-container"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="thumbnail"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="expando-media-container"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-testid="post-thumbnail"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-testid="post-image"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [slot="post-media-container"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [slot="thumbnail"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-click-id="image"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-click-id="media"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] *,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] img,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] video,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] iframe,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] shreddit-player-2 {
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="post-media-container"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="thumbnail"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="expando-media-container"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [data-post-click-location="post-media"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [data-click-id="media"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [data-testid="post-thumbnail"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="post-media-container"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="thumbnail"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="expando-media-container"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-testid="post-thumbnail"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-testid="post-image"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [slot="post-media-container"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [slot="thumbnail"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-click-id="image"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-click-id="media"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] *,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] img,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] video,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] iframe,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] shreddit-player-2 {
         opacity: 0 !important;
       }
 
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts {
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] recent-posts {
         display: none !important;
       }
 
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] {
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] community-highlight-carousel {
+        display: none !important;
+      }
+
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] {
         background: #000 !important;
         border-color: #111 !important;
       }
 
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post:has(shreddit-dynamic-ad-link),
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"]:has(shreddit-dynamic-ad-link) {
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post:has(shreddit-dynamic-ad-link),
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post,
+      html.${LAGGY_CLASS}[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"]:has(shreddit-dynamic-ad-link) {
         display: none !important;
       }
     `;
@@ -307,7 +327,9 @@
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (node instanceof Element) {
-            armBootWindow();
+            if (options.laggyReddit) {
+              armBootWindow();
+            }
             hideFeedAds(node);
           }
         }
@@ -342,7 +364,9 @@
   }
 
   function applyOptions() {
-    armBootWindow();
+    if (options.laggyReddit) {
+      armBootWindow();
+    }
     ensureStyle();
     syncPageView();
     hideFeedAds();

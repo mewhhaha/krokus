@@ -2,7 +2,8 @@
   const DEFAULT_OPTIONS = Object.freeze({
     blockYoutubeShorts: true,
     hideYoutubeShortsUi: true,
-    laggyReddit: false
+    laggyReddit: false,
+    monochromeReddit: false
   });
 
   async function getOptions() {

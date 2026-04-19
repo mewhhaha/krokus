@@ -3,12 +3,14 @@
   const fields = {
     blockYoutubeShorts: document.getElementById("blockYoutubeShorts"),
     hideYoutubeShortsUi: document.getElementById("hideYoutubeShortsUi"),
+    monochromeReddit: document.getElementById("monochromeReddit"),
     laggyReddit: document.getElementById("laggyReddit")
   };
 
   function render(options) {
     fields.blockYoutubeShorts.checked = Boolean(options.blockYoutubeShorts);
     fields.hideYoutubeShortsUi.checked = Boolean(options.hideYoutubeShortsUi);
+    fields.monochromeReddit.checked = Boolean(options.monochromeReddit);
     fields.laggyReddit.checked = Boolean(options.laggyReddit);
   }
 
@@ -16,6 +18,7 @@
     return {
       blockYoutubeShorts: fields.blockYoutubeShorts.checked,
       hideYoutubeShortsUi: fields.hideYoutubeShortsUi.checked,
+      monochromeReddit: fields.monochromeReddit.checked,
       laggyReddit: fields.laggyReddit.checked
     };
   }
