@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Friction Switch",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Toggle annoying web behavior on purpose.",
   "permissions": [
     "storage",
