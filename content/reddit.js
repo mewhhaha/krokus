@@ -2,16 +2,8 @@
   const { DEFAULT_OPTIONS, getOptions, watchOptions } = globalThis.FrictionSwitch;
   const STYLE_ID = "friction-switch-reddit-style";
   const HEAVY_LAG_PROFILE = [320, 160];
+  const BOOT_ATTR = "data-friction-switch-booting";
   const REDDIT_VIEW_ATTR = "data-friction-switch-reddit-view";
-  const REVEAL_ATTR = "data-friction-switch-reveal";
-  const PENDING_REVEAL_ATTR = "data-friction-switch-pending";
-  const COMMENT_SELECTOR = [
-    "shreddit-comment",
-    "[data-testid=\"comment\"]",
-    "[thingid^=\"t1_\"]",
-    "faceplate-comment",
-    "article[data-testid*=\"comment\"]"
-  ].join(", ");
   const FEED_POST_SELECTOR = [
     "shreddit-ad-post",
     "shreddit-post",
@@ -43,8 +35,9 @@
   const AD_TEXT_RE = /\b(promoted|sponsored|advertisement|ad)\b/i;
   let options = { ...DEFAULT_OPTIONS };
   let lastLagAt = 0;
+  let bootTimer = 0;
+  let feedObserverStarted = false;
   let listenersAttached = false;
-  let revealObserverStarted = false;
   let navigationHooked = false;
 
   function busyWait(durationMs) {
@@ -76,15 +69,20 @@
   function removeStyle() {
     document.getElementById(STYLE_ID)?.remove();
     document.documentElement?.classList.remove("friction-switch-laggy");
+    document.documentElement?.removeAttribute(BOOT_ATTR);
     document.documentElement?.removeAttribute(REDDIT_VIEW_ATTR);
   }
 
-  function revealDelayMs(kind) {
-    if (kind === "comment") {
-      return 2200 + Math.round(Math.random() * 1800);
+  function armBootWindow() {
+    if (!options.laggyReddit || !document.documentElement) {
+      return;
     }
 
-    return 1400 + Math.round(Math.random() * 1800);
+    document.documentElement.setAttribute(BOOT_ATTR, "true");
+    window.clearTimeout(bootTimer);
+    bootTimer = window.setTimeout(() => {
+      document.documentElement?.removeAttribute(BOOT_ATTR);
+    }, 180);
   }
 
   function isPostDetailPage() {
@@ -105,58 +103,6 @@
       REDDIT_VIEW_ATTR,
       isPostDetailPage() ? "detail" : "feed"
     );
-  }
-
-  function isCommentNode(node) {
-    return node instanceof Element && node.matches(COMMENT_SELECTOR);
-  }
-
-  function markDelayed(node, kind) {
-    if (!(node instanceof Element) || !options.laggyReddit) {
-      return;
-    }
-
-    if (node.hasAttribute(PENDING_REVEAL_ATTR) || node.getAttribute(REVEAL_ATTR) === "done") {
-      return;
-    }
-
-    node.setAttribute(PENDING_REVEAL_ATTR, kind);
-    node.setAttribute(REVEAL_ATTR, kind);
-
-    window.setTimeout(() => {
-      node.removeAttribute(PENDING_REVEAL_ATTR);
-      if (options.laggyReddit) {
-        node.setAttribute(REVEAL_ATTR, "done");
-      } else {
-        node.removeAttribute(REVEAL_ATTR);
-      }
-    }, revealDelayMs(kind));
-  }
-
-  function queueSlowReveals(root = document) {
-    if (!options.laggyReddit || !(root instanceof Document || root instanceof Element)) {
-      return;
-    }
-
-    if (root instanceof Element) {
-      if (isCommentNode(root)) {
-        markDelayed(root, "comment");
-      }
-    }
-
-    for (const comment of root.querySelectorAll?.(COMMENT_SELECTOR) || []) {
-      markDelayed(comment, "comment");
-    }
-  }
-
-  function restoreDelayedNodes() {
-    const delayedNodes = document.querySelectorAll(
-      `[${REVEAL_ATTR}], [${PENDING_REVEAL_ATTR}]`
-    );
-    for (const node of delayedNodes) {
-      node.removeAttribute(REVEAL_ATTR);
-      node.removeAttribute(PENDING_REVEAL_ATTR);
-    }
   }
 
   function hideFeedAd(container) {
@@ -221,7 +167,6 @@
   function ensureStyle() {
     if (!options.laggyReddit || !document.documentElement) {
       removeStyle();
-      restoreDelayedNodes();
       restoreFeedAds();
       return;
     }
@@ -235,9 +180,11 @@
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
-      html.friction-switch-laggy * {
-        transition-duration: 1200ms !important;
-        animation-duration: 2200ms !important;
+      html.friction-switch-laggy[${BOOT_ATTR}="true"] *,
+      html.friction-switch-laggy[${BOOT_ATTR}="true"] *::before,
+      html.friction-switch-laggy[${BOOT_ATTR}="true"] *::after {
+        transition: none !important;
+        animation: none !important;
       }
 
       html.friction-switch-laggy body {
@@ -249,66 +196,84 @@
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="expando-media-container"],
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [data-post-click-location="post-media"],
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [data-click-id="media"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post img,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post video,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post shreddit-player-2,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post gallery-carousel,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post shreddit-gallery-carousel,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post iframe,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post [slot="post-media-container"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post [slot="thumbnail"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post [slot="expando-media-container"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post [data-post-click-location="post-media"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post [data-click-id="media"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post img,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post video,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post shreddit-player-2,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post gallery-carousel,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post shreddit-gallery-carousel,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post iframe,
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="post-media-container"],
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="thumbnail"],
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="expando-media-container"],
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [data-post-click-location="post-media"],
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [data-click-id="media"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post:has(shreddit-dynamic-ad-link),
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] gallery-carousel,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] shreddit-gallery-carousel,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] shreddit-player-2,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] video,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] iframe,
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-click-id="image"],
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-click-id="media"],
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-testid="post-image"],
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [slot="post-media-container"],
       html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [slot="thumbnail"],
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] img,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] video,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] shreddit-player-2,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] gallery-carousel,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] shreddit-gallery-carousel,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] iframe,
-      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"]:has(shreddit-dynamic-ad-link) {
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-testid="post-thumbnail"] {
+        background: #000 !important;
+        border-color: #111 !important;
+        color: transparent !important;
+      }
+
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="post-media-container"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="thumbnail"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [slot="expando-media-container"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [data-post-click-location="post-media"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-post [data-click-id="media"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [data-testid="post-thumbnail"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="post-media-container"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="thumbnail"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] faceplate-tracker[slot="content"] [slot="expando-media-container"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-testid="post-thumbnail"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-testid="post-image"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [slot="post-media-container"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [slot="thumbnail"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-click-id="image"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"] [data-click-id="media"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] *,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] img,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] video,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] iframe,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] shreddit-player-2 {
+        opacity: 0 !important;
+      }
+
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts {
         display: none !important;
       }
 
-      html.friction-switch-laggy [${REVEAL_ATTR}="comment"] {
-        opacity: 0.001 !important;
-        filter: blur(16px) saturate(0.65) !important;
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] recent-posts [data-testid="post-thumbnail"] {
+        background: #000 !important;
+        border-color: #111 !important;
       }
 
-      html.friction-switch-laggy [${PENDING_REVEAL_ATTR}="comment"] {
-        pointer-events: none !important;
-      }
-
-      html.friction-switch-laggy [${REVEAL_ATTR}="done"] {
-        opacity: 1 !important;
-        filter: none !important;
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post:has(shreddit-dynamic-ad-link),
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] shreddit-ad-post,
+      html.friction-switch-laggy[${REDDIT_VIEW_ATTR}="feed"] article[data-testid="post-container"]:has(shreddit-dynamic-ad-link) {
+        display: none !important;
       }
     `;
 
     (document.head || document.documentElement).appendChild(style);
+  }
+
+  function shouldLagLink(link, event) {
+    if (!(link instanceof HTMLAnchorElement) || !options.laggyReddit) {
+      return false;
+    }
+
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return false;
+    }
+
+    if (!link.href || link.target === "_blank") {
+      return false;
+    }
+
+    const url = new URL(link.href, window.location.href);
+    if (url.origin !== window.location.origin) {
+      return true;
+    }
+
+    return `${url.pathname}${url.search}` !== `${window.location.pathname}${window.location.search}`;
   }
 
   function attachListeners() {
@@ -318,32 +283,22 @@
 
     listenersAttached = true;
 
-    window.addEventListener("pointerdown", () => {
+    window.addEventListener("click", (event) => {
+      const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      if (!shouldLagLink(link, event)) {
+        return;
+      }
+
       maybeLag(1);
-    }, true);
-
-    window.addEventListener("keydown", () => {
-      maybeLag(0.7);
-    }, true);
-
-    window.addEventListener("wheel", () => {
-      maybeLag(0.45);
-    }, {
-      capture: true,
-      passive: true
-    });
-
-    window.addEventListener("scroll", () => {
-      maybeLag(0.35);
     }, true);
   }
 
-  function startRevealObserver() {
-    if (revealObserverStarted) {
+  function startFeedObserver() {
+    if (feedObserverStarted) {
       return;
     }
 
-    revealObserverStarted = true;
+    feedObserverStarted = true;
     const observer = new MutationObserver((mutations) => {
       if (!options.laggyReddit) {
         return;
@@ -352,7 +307,7 @@
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (node instanceof Element) {
-            queueSlowReveals(node);
+            armBootWindow();
             hideFeedAds(node);
           }
         }
@@ -387,14 +342,14 @@
   }
 
   function applyOptions() {
+    armBootWindow();
     ensureStyle();
     syncPageView();
-    queueSlowReveals();
     hideFeedAds();
   }
 
   attachListeners();
-  startRevealObserver();
+  startFeedObserver();
   hookNavigation();
 
   getOptions().then((savedOptions) => {
