@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Friction Switch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Toggle annoying web behavior on purpose.",
   "permissions": [
     "storage",
@@ -37,6 +37,11 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "friction-switch@example.com",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      },
       "strict_min_version": "109.0"
     }
   }
