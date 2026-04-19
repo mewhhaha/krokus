@@ -36,9 +36,9 @@ jobs:
         id: manifest
         run: |
           VERSION="$(python3 - <<'PY'
-import json
-print(json.load(open("manifest.json"))["version"])
-PY
+          import json
+          print(json.load(open("manifest.json"))["version"])
+          PY
           )"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
@@ -57,12 +57,13 @@ PY
           TAG: ${{ steps.vars.outputs.tag }}
           VERSION: ${{ steps.manifest.outputs.version }}
         run: |
-          ASSET="dist/friction-switch-${VERSION}.xpi"
+          VERSIONED_ASSET="dist/friction-switch-${VERSION}.xpi"
+          LATEST_ASSET="dist/friction-switch.xpi"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ASSET" --clobber
+            gh release upload "$TAG" "$VERSIONED_ASSET" "$LATEST_ASSET" --clobber
           else
-            gh release create "$TAG" "$ASSET" \
+            gh release create "$TAG" "$VERSIONED_ASSET" "$LATEST_ASSET" \
               --target "${GITHUB_SHA}" \
               --title "$TAG" \
               --generate-notes
