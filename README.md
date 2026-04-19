@@ -15,7 +15,10 @@ cd krokus
 bash scripts/build-xpi.sh
 ```
 
-Creates `dist/friction-switch.xpi`.
+Creates:
+
+- `dist/friction-switch.xpi`
+- `dist/friction-switch-<version>.xpi`
 
 ## Install Properly In Firefox
 
